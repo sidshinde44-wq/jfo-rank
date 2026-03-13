@@ -37,7 +37,7 @@ export default function Home() {
       .eq('exam_category', category)
       .lt('result_time', time)
 
-    setRank(count + 1)
+    setRank((count ?? 0) + 1)
     setLoading(false)
   }
 
