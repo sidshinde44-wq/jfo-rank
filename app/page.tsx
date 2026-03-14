@@ -68,6 +68,14 @@ export default function Home() {
 
   }, [category])
 
+  const validateRoll = () => {
+    if (roll && !/^\d+$/.test(roll)) {
+      alert('Roll number must contain digits only')
+      return false
+    }
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
 
     e.preventDefault()
@@ -75,6 +83,11 @@ export default function Home() {
 
     if (!email || !time) {
       alert('Please fill all required fields')
+      setLoading(false)
+      return
+    }
+
+    if (!validateRoll()) {
       setLoading(false)
       return
     }
@@ -146,6 +159,8 @@ export default function Home() {
       return
     }
 
+    if (!validateRoll()) return
+
     setLoading(true)
 
     try {
@@ -196,17 +211,13 @@ export default function Home() {
     }}>
 
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-
         <h1 style={{ color: '#003366' }}>
           ✈ Indigo JFO Rank Estimator
         </h1>
-
         <p style={{ color: '#555' }}>
-          Estimate your written exam merit ranking
+          43 candidates have already submitted results
         </p>
-
       </div>
-
 
       <div style={{
         maxWidth: '700px',
@@ -216,7 +227,6 @@ export default function Home() {
         borderRadius: '10px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
       }}>
-
 
         <div style={{ marginBottom: '20px', textAlign: 'center' }}>
 
@@ -228,8 +238,7 @@ export default function Home() {
               background: '#003366',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
+              borderRadius: '6px'
             }}
           >
             Submit Result
@@ -242,15 +251,13 @@ export default function Home() {
               background: '#4da6ff',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
+              borderRadius: '6px'
             }}
           >
             Check Rank
           </button>
 
         </div>
-
 
         {mode === 'submit' && (
 
@@ -281,7 +288,9 @@ export default function Home() {
 
             <label>Roll Number</label><br />
             <input
-              type="text"
+              type="number"
+              inputMode="numeric"
+              placeholder="Enter numeric roll number"
               value={roll}
               onChange={(e) => setRoll(e.target.value)}
               style={{ width: '100%', padding: '8px' }}
@@ -319,7 +328,6 @@ export default function Home() {
 
         )}
 
-
         {mode === 'check' && (
 
           <div>
@@ -338,7 +346,9 @@ export default function Home() {
 
             <label>Roll Number</label><br />
             <input
-              type="text"
+              type="number"
+              inputMode="numeric"
+              placeholder="Enter numeric roll number"
               value={roll}
               onChange={(e) => setRoll(e.target.value)}
               style={{ width: '100%', padding: '8px' }}
@@ -364,7 +374,6 @@ export default function Home() {
           </div>
 
         )}
-
 
         {rank && (
 
@@ -392,7 +401,6 @@ export default function Home() {
           </div>
 
         )}
-
 
         {leaderboard.length > 0 && (
 
