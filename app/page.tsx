@@ -305,7 +305,7 @@ export default function Home() {
               value={time}
               onChange={(e) => setTime(e.target.value)}
               min="2026-03-12T22:00"
-              max="2026-03-12T24:00"
+              max="2026-03-13T22:00"
               style={{ width: '100%', padding: '8px' }}
             />
 
