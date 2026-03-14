@@ -15,7 +15,7 @@ export default function Home() {
   const [email, setEmail] = useState('')
   const [category, setCategory] = useState('CPL')
   const [roll, setRoll] = useState('')
-  const [time, setTime] = useState('')
+  const [time, setTime] = useState('2026-03-12T22:00') // default start time
 
   const [rank, setRank] = useState<number | null>(null)
   const [percentile, setPercentile] = useState<number | null>(null)
@@ -178,13 +178,13 @@ export default function Home() {
         return
       }
 
-      const time = candidate.result_time
+      const candidateTime = candidate.result_time
 
       const { count } = await supabase
         .from('candidates')
         .select('*', { count: 'exact', head: true })
         .eq('exam_category', category)
-        .lt('result_time', time)
+        .lt('result_time', candidateTime)
 
       const calculatedRank = (count ?? 0) + 1
 
@@ -215,7 +215,7 @@ export default function Home() {
           ✈ Indigo JFO Rank Estimator
         </h1>
         <p style={{ color: '#555' }}>
-          72+ candidates have already submitted results
+          {totalSubmissions} candidates have already submitted results
         </p>
       </div>
 
@@ -304,6 +304,8 @@ export default function Home() {
               required
               value={time}
               onChange={(e) => setTime(e.target.value)}
+              min="2026-03-12T22:00"
+              max="2026-03-12T24:00"
               style={{ width: '100%', padding: '8px' }}
             />
 
