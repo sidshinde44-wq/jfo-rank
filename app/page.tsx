@@ -9,7 +9,6 @@ interface Candidate {
 }
 
 export default function Home() {
-
   const [mode, setMode] = useState<'submit' | 'check'>('submit')
 
   const [email, setEmail] = useState('')
@@ -27,15 +26,7 @@ export default function Home() {
   const [fastestTime, setFastestTime] = useState<string | null>(null)
   const [latestTime, setLatestTime] = useState<string | null>(null)
 
-  // Rank bands thresholds
-  const rankBands = [
-    { label: 'Top 1%', maxPercentile: 99 },
-    { label: 'Top 5%', maxPercentile: 95 },
-    { label: 'Top 10%', maxPercentile: 90 },
-    { label: 'Top 25%', maxPercentile: 75 },
-    { label: 'Top 50%', maxPercentile: 50 },
-  ]
-
+  // Fetch live stats
   const fetchStats = async () => {
     const { count } = await supabase
       .from('candidates')
@@ -69,6 +60,7 @@ export default function Home() {
     if (latest && latest.length > 0) setLatestTime(latest[0].result_time)
   }
 
+  // Fetch leaderboard
   const fetchLeaderboard = async () => {
     const { data } = await supabase
       .from('candidates')
@@ -79,6 +71,7 @@ export default function Home() {
     if (data) setLeaderboard(data)
   }
 
+  // Calculate rank & percentile
   const calculateRank = async (userTime: string) => {
     const { count } = await supabase
       .from('candidates')
@@ -100,15 +93,33 @@ export default function Home() {
     }
   }
 
+  // ✅ Async-safe useEffect
+  useEffect(() => {
+    const init = async () => {
+      await fetchStats()
+      await fetchLeaderboard()
+    }
+    init()
+
+    const channel = supabase
+      .channel('public:candidates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'candidates' },
+        () => {
+          fetchStats()
+          fetchLeaderboard()
+        }
+      )
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [category])
+
+  // Submit result
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
-    if (!email || !time) {
-      alert('Please fill all required fields')
-      setLoading(false)
-      return
-    }
 
     const { data: existing } = await supabase
       .from('candidates')
@@ -135,6 +146,7 @@ export default function Home() {
     setLoading(false)
   }
 
+  // Check rank
   const handleCheckRank = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -153,42 +165,19 @@ export default function Home() {
     await calculateRank(data[0].result_time)
   }
 
-  // ✅ Fixed async useEffect
-  useEffect(() => {
-    const init = async () => {
-      await fetchStats()
-      await fetchLeaderboard()
-    }
-    init()
-
-    const channel = supabase
-      .channel('public:candidates')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'candidates' },
-        () => {
-          fetchStats()
-          fetchLeaderboard()
-        }
-      )
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
-  }, [category])
-
-  const getRankBand = () => {
-    if (percentile === null) return null
-    for (let band of rankBands) {
-      if (percentile >= band.maxPercentile) return band.label
-    }
-    return 'Below 50%'
+  // Rank band helper
+  const getRankBand = (r: number) => {
+    if (r <= 10) return '🥇 Gold'
+    if (r <= 25) return '🥈 Silver'
+    if (r <= 50) return '🥉 Bronze'
+    return 'Participant'
   }
 
   return (
     <div style={{ maxWidth: '750px', margin: '40px auto', fontFamily: 'Arial' }}>
       <h1>Indigo JFO Rank Estimator</h1>
 
-      {/* Live Stats Panel */}
+      {/* LIVE STATS PANEL */}
       <div style={{ background: '#f5f7fa', padding: 15, borderRadius: 8, marginBottom: 25 }}>
         <h3>Live Exam Stats</h3>
         <p>Total Submissions: {totalSubmissions}</p>
@@ -198,12 +187,15 @@ export default function Home() {
         {latestTime && <p>Latest Submission Time: {latestTime}</p>}
       </div>
 
-      {/* Mode Switch */}
+      {/* Mode Selection */}
       <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setMode('submit')} style={{ marginRight: 10 }}>Submit Result</button>
+        <button onClick={() => setMode('submit')} style={{ marginRight: 10 }}>
+          Submit Result
+        </button>
         <button onClick={() => setMode('check')}>Check My Rank</button>
       </div>
 
+      {/* Form */}
       <form onSubmit={mode === 'submit' ? handleSubmit : handleCheckRank}>
         <label>Exam Category</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -236,16 +228,12 @@ export default function Home() {
         </button>
       </form>
 
-      {/* Rank & Percentile */}
+      {/* Rank Display */}
       {rank && (
         <div style={{ marginTop: 30, padding: 15, border: '1px solid #ddd', borderRadius: 8 }}>
           <h2>Your Rank: {rank}</h2>
-          {percentile !== null && (
-            <>
-              <p>Percentile: {percentile}%</p>
-              <p>Rank Band: {getRankBand()}</p>
-            </>
-          )}
+          {percentile !== null && <p>Percentile: {percentile}%</p>}
+          <p>Rank Band: {getRankBand(rank)}</p>
         </div>
       )}
 
@@ -269,6 +257,11 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+          {rank && rank > 10 && (
+            <p style={{ marginTop: 10, fontWeight: 'bold', color: '#0f5132' }}>
+              Your Rank: {rank} (not in top 10)
+            </p>
+          )}
         </div>
       )}
     </div>
