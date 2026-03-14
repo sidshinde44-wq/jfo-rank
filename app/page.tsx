@@ -18,8 +18,6 @@ export default function Home() {
   const [time, setTime] = useState('')
   const [rank, setRank] = useState<number | null>(null)
   const [percentile, setPercentile] = useState<number | null>(null)
-  const [rankBand, setRankBand] = useState<string | null>(null)
-
   const [totalSubmissions, setTotalSubmissions] = useState<number>(0)
   const [leaderboard, setLeaderboard] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(false)
@@ -29,26 +27,31 @@ export default function Home() {
   const [fastestTime, setFastestTime] = useState<string | null>(null)
   const [latestTime, setLatestTime] = useState<string | null>(null)
 
-  const fetchStats = async () => {
+  // Rank bands thresholds
+  const rankBands = [
+    { label: 'Top 1%', maxPercentile: 99 },
+    { label: 'Top 5%', maxPercentile: 95 },
+    { label: 'Top 10%', maxPercentile: 90 },
+    { label: 'Top 25%', maxPercentile: 75 },
+    { label: 'Top 50%', maxPercentile: 50 },
+  ]
 
+  const fetchStats = async () => {
     const { count } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
-
     setTotalSubmissions(count ?? 0)
 
     const { count: cpl } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
       .eq('exam_category', 'CPL')
-
     setCplCount(cpl ?? 0)
 
     const { count: tr } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
       .eq('exam_category', 'Type Rated')
-
     setTrCount(tr ?? 0)
 
     const { data: fastest } = await supabase
@@ -56,55 +59,27 @@ export default function Home() {
       .select('result_time')
       .order('result_time', { ascending: true })
       .limit(1)
-
-    if (fastest && fastest.length > 0)
-      setFastestTime(fastest[0].result_time)
+    if (fastest && fastest.length > 0) setFastestTime(fastest[0].result_time)
 
     const { data: latest } = await supabase
       .from('candidates')
       .select('result_time')
       .order('created_at', { ascending: false })
       .limit(1)
-
-    if (latest && latest.length > 0)
-      setLatestTime(latest[0].result_time)
+    if (latest && latest.length > 0) setLatestTime(latest[0].result_time)
   }
 
   const fetchLeaderboard = async () => {
-
     const { data } = await supabase
       .from('candidates')
       .select('roll_number,result_time')
       .eq('exam_category', category)
       .order('result_time', { ascending: true })
       .limit(10)
-
     if (data) setLeaderboard(data)
   }
 
-  useEffect(() => {
-
-    fetchStats()
-    fetchLeaderboard()
-
-    const channel = supabase
-      .channel('public:candidates')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'candidates' },
-        () => {
-          fetchStats()
-          fetchLeaderboard()
-        }
-      )
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
-
-  }, [category])
-
   const calculateRank = async (userTime: string) => {
-
     const { count } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
@@ -120,22 +95,20 @@ export default function Home() {
       .eq('exam_category', category)
 
     if (total) {
-
-      const p = Math.round((1 - newRank / total) * 100)
-      setPercentile(p)
-
-      if (p >= 99) setRankBand('Top 1%')
-      else if (p >= 95) setRankBand('Top 5%')
-      else if (p >= 90) setRankBand('Top 10%')
-      else if (p >= 75) setRankBand('Top 25%')
-      else setRankBand('Below Top 25%')
+      const p = (1 - newRank / total) * 100
+      setPercentile(Math.round(p))
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-
     e.preventDefault()
     setLoading(true)
+
+    if (!email || !time) {
+      alert('Please fill all required fields')
+      setLoading(false)
+      return
+    }
 
     const { data: existing } = await supabase
       .from('candidates')
@@ -144,7 +117,6 @@ export default function Home() {
       .eq('exam_category', category)
 
     if (existing && existing.length > 0) {
-
       alert('Result already submitted. Use Check My Rank.')
       setLoading(false)
       return
@@ -152,14 +124,7 @@ export default function Home() {
 
     const { error } = await supabase
       .from('candidates')
-      .insert([
-        {
-          email,
-          roll_number: roll,
-          exam_category: category,
-          result_time: time
-        }
-      ])
+      .insert([{ email, roll_number: roll, exam_category: category, result_time: time }])
 
     if (!error) {
       await calculateRank(time)
@@ -171,7 +136,6 @@ export default function Home() {
   }
 
   const handleCheckRank = async (e: React.FormEvent) => {
-
     e.preventDefault()
 
     const { data } = await supabase
@@ -182,55 +146,66 @@ export default function Home() {
       .limit(1)
 
     if (!data || data.length === 0) {
-      alert("No submission found")
+      alert('No submission found')
       return
     }
 
     await calculateRank(data[0].result_time)
   }
 
+  // ✅ Fixed async useEffect
+  useEffect(() => {
+    const init = async () => {
+      await fetchStats()
+      await fetchLeaderboard()
+    }
+    init()
+
+    const channel = supabase
+      .channel('public:candidates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'candidates' },
+        () => {
+          fetchStats()
+          fetchLeaderboard()
+        }
+      )
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [category])
+
+  const getRankBand = () => {
+    if (percentile === null) return null
+    for (let band of rankBands) {
+      if (percentile >= band.maxPercentile) return band.label
+    }
+    return 'Below 50%'
+  }
+
   return (
-
     <div style={{ maxWidth: '750px', margin: '40px auto', fontFamily: 'Arial' }}>
-
       <h1>Indigo JFO Rank Estimator</h1>
 
-      {/* LIVE STATS PANEL */}
-
-      <div style={{
-        background: '#f5f7fa',
-        padding: 15,
-        borderRadius: 8,
-        marginBottom: 25
-      }}>
-
+      {/* Live Stats Panel */}
+      <div style={{ background: '#f5f7fa', padding: 15, borderRadius: 8, marginBottom: 25 }}>
         <h3>Live Exam Stats</h3>
-
         <p>Total Submissions: {totalSubmissions}</p>
         <p>CPL Candidates: {cplCount}</p>
         <p>Type Rated: {trCount}</p>
-
         {fastestTime && <p>Fastest Result Time: {fastestTime}</p>}
         {latestTime && <p>Latest Submission Time: {latestTime}</p>}
-
       </div>
 
+      {/* Mode Switch */}
       <div style={{ marginBottom: 20 }}>
-
-        <button onClick={() => setMode('submit')} style={{ marginRight: 10 }}>
-          Submit Result
-        </button>
-
-        <button onClick={() => setMode('check')}>
-          Check My Rank
-        </button>
-
+        <button onClick={() => setMode('submit')} style={{ marginRight: 10 }}>Submit Result</button>
+        <button onClick={() => setMode('check')}>Check My Rank</button>
       </div>
 
       <form onSubmit={mode === 'submit' ? handleSubmit : handleCheckRank}>
-
         <label>Exam Category</label>
-
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="CPL">CPL</option>
           <option value="Type Rated">Type Rated</option>
@@ -239,114 +214,63 @@ export default function Home() {
         <br /><br />
 
         <label>Email</label>
-
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
         <br /><br />
 
         <label>Roll Number</label>
-
-        <input
-          type="text"
-          value={roll}
-          onChange={(e) => setRoll(e.target.value)}
-        />
+        <input type="text" value={roll} onChange={(e) => setRoll(e.target.value)} />
 
         <br /><br />
 
         {mode === 'submit' && (
-
           <>
             <label>Result Time</label>
-
-            <input
-              type="datetime-local"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              required
-            />
-
+            <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} required />
             <br /><br />
           </>
-
         )}
 
         <button type="submit" disabled={loading}>
-          {mode === 'submit'
-            ? loading
-              ? 'Submitting...'
-              : 'Submit Result'
-            : 'Check My Rank'}
+          {mode === 'submit' ? (loading ? 'Submitting...' : 'Submit Result') : 'Check My Rank'}
         </button>
-
       </form>
 
+      {/* Rank & Percentile */}
       {rank && (
-
-        <div style={{
-          marginTop: 30,
-          padding: 15,
-          border: '1px solid #ddd',
-          borderRadius: 8
-        }}>
-
+        <div style={{ marginTop: 30, padding: 15, border: '1px solid #ddd', borderRadius: 8 }}>
           <h2>Your Rank: {rank}</h2>
-
-          {percentile !== null &&
-            <p>Percentile: {percentile}%</p>}
-
-          {rankBand &&
-            <p style={{ fontWeight: 'bold', color: '#0f5132' }}>
-              Performance Band: {rankBand}
-            </p>}
-
+          {percentile !== null && (
+            <>
+              <p>Percentile: {percentile}%</p>
+              <p>Rank Band: {getRankBand()}</p>
+            </>
+          )}
         </div>
-
       )}
 
+      {/* Leaderboard */}
       {leaderboard.length > 0 && (
-
         <div style={{ marginTop: 40 }}>
-
           <h3>Top 10 Fastest ({category})</h3>
-
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-
             <thead>
-
               <tr>
                 <th style={{ borderBottom: '1px solid #ccc', padding: 6 }}>Rank</th>
                 <th style={{ borderBottom: '1px solid #ccc', padding: 6 }}>Result Time</th>
               </tr>
-
             </thead>
-
             <tbody>
-
               {leaderboard.map((c, idx) => (
-
                 <tr key={idx}>
-
                   <td style={{ padding: 6 }}>{idx + 1}</td>
                   <td style={{ padding: 6 }}>{c.result_time}</td>
-
                 </tr>
-
               ))}
-
             </tbody>
-
           </table>
-
         </div>
-
       )}
-
     </div>
-
   )
 }
