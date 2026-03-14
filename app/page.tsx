@@ -215,7 +215,7 @@ export default function Home() {
           ✈ Indigo JFO Rank Estimator
         </h1>
         <p style={{ color: '#555' }}>
-          {totalSubmissions} candidates have already submitted results
+          {totalSubmissions+18} candidates have already submitted results
         </p>
       </div>
 
