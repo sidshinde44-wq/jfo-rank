@@ -1,4 +1,4 @@
-	'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -9,8 +9,6 @@ interface Candidate {
 }
 
 export default function Home() {
-  const [mode, setMode] = useState<'submit' | 'check'>('submit')
-
   const [email, setEmail] = useState('')
   const [category, setCategory] = useState('CPL')
   const [roll, setRoll] = useState('')
@@ -21,182 +19,116 @@ export default function Home() {
   const [leaderboard, setLeaderboard] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(false)
 
-  const [cplCount, setCplCount] = useState(0)
-  const [trCount, setTrCount] = useState(0)
-  const [fastestTime, setFastestTime] = useState<string | null>(null)
-  const [latestTime, setLatestTime] = useState<string | null>(null)
-
-  // Fetch live stats
-  const fetchStats = async () => {
+  // Fetch total submissions
+  const fetchTotalSubmissions = async () => {
     const { count } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
+      .eq('exam_category', category)
     setTotalSubmissions(count ?? 0)
-
-    const { count: cpl } = await supabase
-      .from('candidates')
-      .select('*', { count: 'exact', head: true })
-      .eq('exam_category', 'CPL')
-    setCplCount(cpl ?? 0)
-
-    const { count: tr } = await supabase
-      .from('candidates')
-      .select('*', { count: 'exact', head: true })
-      .eq('exam_category', 'Type Rated')
-    setTrCount(tr ?? 0)
-
-    const { data: fastest } = await supabase
-      .from('candidates')
-      .select('result_time')
-      .order('result_time', { ascending: true })
-      .limit(1)
-    if (fastest && fastest.length > 0) setFastestTime(fastest[0].result_time)
-
-    const { data: latest } = await supabase
-      .from('candidates')
-      .select('result_time')
-      .order('created_at', { ascending: false })
-      .limit(1)
-    if (latest && latest.length > 0) setLatestTime(latest[0].result_time)
   }
 
-  // Fetch leaderboard
+  // Fetch top 10 leaderboard
   const fetchLeaderboard = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('candidates')
-      .select('roll_number,result_time')
+      .select('roll_number, result_time')
       .eq('exam_category', category)
       .order('result_time', { ascending: true })
       .limit(10)
-    if (data) setLeaderboard(data)
+    if (!error && data) setLeaderboard(data)
   }
 
-  // Calculate rank & percentile
-  const calculateRank = async (userTime: string) => {
-    const { count } = await supabase
-      .from('candidates')
-      .select('*', { count: 'exact', head: true })
-      .eq('exam_category', category)
-      .lt('result_time', userTime)
-
-    const newRank = (count ?? 0) + 1
-    setRank(newRank)
-
-    const { count: total } = await supabase
-      .from('candidates')
-      .select('*', { count: 'exact', head: true })
-      .eq('exam_category', category)
-
-    if (total) {
-      const p = (1 - newRank / total) * 100
-      setPercentile(Math.round(p))
-    }
-  }
-
-  // ✅ Async-safe useEffect
   useEffect(() => {
-    const init = async () => {
-      await fetchStats()
-      await fetchLeaderboard()
-    }
-    init()
+    fetchTotalSubmissions()
+    fetchLeaderboard()
 
+    // ✅ Supabase v2 real-time subscription
     const channel = supabase
       .channel('public:candidates')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'candidates' },
-        () => {
-          fetchStats()
-          fetchLeaderboard()
+        (payload) => {
+          if (payload.new.exam_category === category) {
+            setTotalSubmissions((prev) => prev + 1)
+            fetchLeaderboard()
+          }
         }
       )
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [category])
 
-  // Submit result
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    const { data: existing } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('roll_number', roll)
-      .eq('exam_category', category)
-
-    if (existing && existing.length > 0) {
-      alert('Result already submitted. Use Check My Rank.')
+    if (!email || !category || !time) {
+      alert('Please fill all required fields')
       setLoading(false)
       return
     }
 
-    const { error } = await supabase
-      .from('candidates')
-      .insert([{ email, roll_number: roll, exam_category: category, result_time: time }])
+    try {
+      const { data: existing } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('roll_number', roll)
+        .eq('exam_category', category)
 
-    if (!error) {
-      await calculateRank(time)
-      fetchStats()
+      if (existing && existing.length > 0) {
+        alert('You have already submitted this exam result.')
+        setLoading(false)
+        return
+      }
+
+      const { error: insertError } = await supabase
+        .from('candidates')
+        .insert([{ email, roll_number: roll, exam_category: category, result_time: time }])
+
+      if (insertError) {
+        console.error(insertError)
+        alert('Error submitting data')
+        setLoading(false)
+        return
+      }
+
+      // Rank calculation
+      const { count } = await supabase
+        .from('candidates')
+        .select('*', { count: 'exact', head: true })
+        .eq('exam_category', category)
+        .lt('result_time', time)
+
+      const newRank = (count ?? 0) + 1
+      setRank(newRank)
+
+      // Percentile calculation
+      const total = totalSubmissions + 1
+      const newPercentile = ((1 - newRank / total) * 100)
+      setPercentile(Math.round(newPercentile))
+
+      alert(`Submission successful! Your estimated rank is ${newRank}`)
       fetchLeaderboard()
+
+    } catch (err) {
+      console.error(err)
+      alert('Something went wrong')
     }
 
     setLoading(false)
   }
 
-  // Check rank
-  const handleCheckRank = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const { data } = await supabase
-      .from('candidates')
-      .select('result_time')
-      .eq('exam_category', category)
-      .or(`roll_number.eq.${roll},email.eq.${email}`)
-      .limit(1)
-
-    if (!data || data.length === 0) {
-      alert('No submission found')
-      return
-    }
-
-    await calculateRank(data[0].result_time)
-  }
-
-  // Rank band helper
-  const getRankBand = (r: number) => {
-    if (r <= 10) return '🥇 Gold'
-    if (r <= 25) return '🥈 Silver'
-    if (r <= 50) return '🥉 Bronze'
-    return 'Participant'
-  }
-
   return (
-    <div style={{ maxWidth: '750px', margin: '40px auto', fontFamily: 'Arial' }}>
+    <div style={{ maxWidth: '700px', margin: '40px auto', fontFamily: 'Arial' }}>
       <h1>Indigo JFO Rank Estimator</h1>
+      <p>Submit your written exam result timing to estimate your approximate merit ranking.</p>
 
-      {/* LIVE STATS PANEL */}
-      <div style={{ background: '#f5f7fa', padding: 15, borderRadius: 8, marginBottom: 25 }}>
-        <h3>Live Exam Stats</h3>
-        <p>Total Submissions: {totalSubmissions}</p>
-        <p>CPL Candidates: {cplCount}</p>
-        <p>Type Rated: {trCount}</p>
-        {fastestTime && <p>Fastest Result Time: {fastestTime}</p>}
-        {latestTime && <p>Latest Submission Time: {latestTime}</p>}
-      </div>
-
-      {/* Mode Selection */}
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setMode('submit')} style={{ marginRight: 10 }}>
-          Submit Result
-        </button>
-        <button onClick={() => setMode('check')}>Check My Rank</button>
-      </div>
-
-      {/* Form */}
-      <form onSubmit={mode === 'submit' ? handleSubmit : handleCheckRank}>
+      <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
         <label>Exam Category</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="CPL">CPL</option>
@@ -206,59 +138,61 @@ export default function Home() {
         <br /><br />
 
         <label>Email</label>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
 
         <br /><br />
 
-        <label>Roll Number</label>
+        <label>Roll Number (optional)</label>
         <input type="text" value={roll} onChange={(e) => setRoll(e.target.value)} />
 
         <br /><br />
 
-        {mode === 'submit' && (
-          <>
-            <label>Result Time</label>
-            <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} required />
-            <br /><br />
-          </>
-        )}
+        <label>Result Time</label>
+        <input type="datetime-local" required value={time} onChange={(e) => setTime(e.target.value)} />
+
+        <br /><br />
 
         <button type="submit" disabled={loading}>
-          {mode === 'submit' ? (loading ? 'Submitting...' : 'Submit Result') : 'Check My Rank'}
+          {loading ? 'Submitting...' : 'Submit & Estimate Rank'}
         </button>
       </form>
 
-      {/* Rank Display */}
+      {/* Results */}
       {rank && (
-        <div style={{ marginTop: 30, padding: 15, border: '1px solid #ddd', borderRadius: 8 }}>
-          <h2>Your Rank: {rank}</h2>
-          {percentile !== null && <p>Percentile: {percentile}%</p>}
-          <p>Rank Band: {getRankBand(rank)}</p>
+        <div style={{ marginTop: '30px', padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+          <h2>Your Estimated Rank: {rank}</h2>
+          {percentile !== null && <p>Approximate Percentile: {percentile}%</p>}
+          <p>Total submissions in {category}: {totalSubmissions}</p>
         </div>
       )}
 
       {/* Leaderboard */}
       {leaderboard.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <h3>Top 10 Fastest ({category})</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ marginTop: '40px' }}>
+          <h3>Top 10 Fastest Submissions ({category})</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr>
-                <th style={{ borderBottom: '1px solid #ccc', padding: 6 }}>Rank</th>
-                <th style={{ borderBottom: '1px solid #ccc', padding: 6 }}>Result Time</th>
+                <th style={{ borderBottom: '1px solid #ccc', padding: '5px' }}>Rank</th>
+                <th style={{ borderBottom: '1px solid #ccc', padding: '5px' }}>Result Time</th>
               </tr>
             </thead>
             <tbody>
-              {leaderboard.map((c, idx) => (
-                <tr key={idx}>
-                  <td style={{ padding: 6 }}>{idx + 1}</td>
-                  <td style={{ padding: 6 }}>{c.result_time}</td>
-                </tr>
-              ))}
+              {leaderboard.map((c, idx) => {
+                const isUser = c.roll_number === roll
+                return (
+                  <tr key={idx} style={{ backgroundColor: isUser ? '#d1e7dd' : 'transparent' }}>
+                    <td style={{ borderBottom: '1px solid #eee', padding: '5px' }}>{idx + 1}</td>
+                    <td style={{ borderBottom: '1px solid #eee', padding: '5px' }}>{c.result_time}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+
+          {/* Show user rank if not in top 10 */}
           {rank && rank > 10 && (
-            <p style={{ marginTop: 10, fontWeight: 'bold', color: '#0f5132' }}>
+            <p style={{ marginTop: '10px', fontWeight: 'bold', color: '#0f5132' }}>
               Your Rank: {rank} (not in top 10)
             </p>
           )}
