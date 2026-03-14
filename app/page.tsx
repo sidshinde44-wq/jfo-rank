@@ -44,6 +44,7 @@ export default function Home() {
   }
 
   useEffect(() => {
+
     fetchTotalSubmissions()
     fetchLeaderboard()
 
@@ -68,10 +69,11 @@ export default function Home() {
   }, [category])
 
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault()
     setLoading(true)
 
-    if (!email || !category || !time) {
+    if (!email || !time) {
       alert('Please fill all required fields')
       setLoading(false)
       return
@@ -86,7 +88,7 @@ export default function Home() {
         .eq('exam_category', category)
 
       if (existing && existing.length > 0) {
-        alert('You have already submitted this exam result.')
+        alert('You already submitted this result.')
         setLoading(false)
         return
       }
@@ -94,7 +96,12 @@ export default function Home() {
       const { error: insertError } = await supabase
         .from('candidates')
         .insert([
-          { email, roll_number: roll, exam_category: category, result_time: time }
+          {
+            email,
+            roll_number: roll,
+            exam_category: category,
+            result_time: time
+          }
         ])
 
       if (insertError) {
@@ -114,6 +121,7 @@ export default function Home() {
 
       const total = totalSubmissions + 1
       const newPercentile = (1 - newRank / total) * 100
+
       setPercentile(Math.round(newPercentile))
 
       alert(`Submission successful! Your estimated rank is ${newRank}`)
@@ -121,11 +129,14 @@ export default function Home() {
       fetchLeaderboard()
 
     } catch (err) {
+
       console.error(err)
       alert('Something went wrong')
+
     }
 
     setLoading(false)
+
   }
 
   const handleCheckRank = async () => {
@@ -165,204 +176,283 @@ export default function Home() {
       setRank(calculatedRank)
 
     } catch (err) {
+
       console.error(err)
       alert('Error checking rank')
+
     }
 
     setLoading(false)
+
   }
 
   return (
-    <div style={{ maxWidth: '700px', margin: '40px auto', fontFamily: 'Arial' }}>
 
-      <h1>Indigo JFO Rank Estimator</h1>
-      <p>Submit your written exam result timing to estimate your approximate merit ranking.</p>
+    <div style={{
+      backgroundColor: '#f5f7fb',
+      minHeight: '100vh',
+      padding: '40px 20px',
+      fontFamily: 'Arial'
+    }}>
 
-      {/* Mode Switch */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
 
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setMode('submit')}>
-          Submit Result
-        </button>
+        <h1 style={{ color: '#003366' }}>
+          ✈ Indigo JFO Rank Estimator
+        </h1>
 
-        <button
-          style={{ marginLeft: '10px' }}
-          onClick={() => setMode('check')}
-        >
-          Check Rank
-        </button>
+        <p style={{ color: '#555' }}>
+          Estimate your written exam merit ranking
+        </p>
+
       </div>
 
-      {/* Submit Mode */}
 
-      {mode === 'submit' && (
+      <div style={{
+        maxWidth: '700px',
+        margin: '0 auto',
+        background: 'white',
+        padding: '30px',
+        borderRadius: '10px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+      }}>
 
-        <form onSubmit={handleSubmit}>
 
-          <label>Exam Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="CPL">CPL</option>
-            <option value="Type Rated">Type Rated</option>
-          </select>
+        <div style={{ marginBottom: '20px', textAlign: 'center' }}>
 
-          <br /><br />
-
-          <label>Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <br /><br />
-
-          <label>Roll Number (optional)</label>
-          <input
-            type="text"
-            value={roll}
-            onChange={(e) => setRoll(e.target.value)}
-          />
-
-          <br /><br />
-
-          <label>Result Time</label>
-          <input
-            type="datetime-local"
-            required
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
-
-          <br /><br />
-
-          <button type="submit" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit & Estimate Rank'}
+          <button
+            onClick={() => setMode('submit')}
+            style={{
+              padding: '10px 20px',
+              marginRight: '10px',
+              background: '#003366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Submit Result
           </button>
 
-        </form>
-
-      )}
-
-      {/* Check Rank Mode */}
-
-      {mode === 'check' && (
-
-        <div>
-
-          <label>Exam Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="CPL">CPL</option>
-            <option value="Type Rated">Type Rated</option>
-          </select>
-
-          <br /><br />
-
-          <label>Roll Number</label>
-          <input
-            type="text"
-            value={roll}
-            onChange={(e) => setRoll(e.target.value)}
-          />
-
-          <br /><br />
-
-          <button onClick={handleCheckRank} disabled={loading}>
-            {loading ? 'Checking...' : 'Check Rank'}
+          <button
+            onClick={() => setMode('check')}
+            style={{
+              padding: '10px 20px',
+              background: '#4da6ff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Check Rank
           </button>
 
         </div>
 
-      )}
 
-      {/* Results */}
+        {mode === 'submit' && (
 
-      {rank && (
+          <form onSubmit={handleSubmit}>
 
-        <div style={{
-          marginTop: '30px',
-          padding: '15px',
-          border: '1px solid #ddd',
-          borderRadius: '8px'
-        }}>
+            <label>Exam Category</label><br />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            >
+              <option value="CPL">CPL</option>
+              <option value="Type Rated">Type Rated</option>
+            </select>
 
-          <h2>Your Estimated Rank: {rank}</h2>
+            <br /><br />
 
-          {percentile !== null &&
-            <p>Approximate Percentile: {percentile}%</p>
-          }
+            <label>Email</label><br />
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            />
 
-          <p>Total submissions in {category}: {totalSubmissions}</p>
+            <br /><br />
 
-        </div>
+            <label>Roll Number</label><br />
+            <input
+              type="text"
+              value={roll}
+              onChange={(e) => setRoll(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            />
 
-      )}
+            <br /><br />
 
-      {/* Leaderboard */}
+            <label>Result Time</label><br />
+            <input
+              type="datetime-local"
+              required
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            />
 
-      {leaderboard.length > 0 && (
+            <br /><br />
 
-        <div style={{ marginTop: '40px' }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: '#003366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px'
+              }}
+            >
+              {loading ? 'Submitting...' : 'Submit & Estimate Rank'}
+            </button>
 
-          <h3>Top 10 Fastest Submissions ({category})</h3>
+          </form>
 
-          <table style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left'
+        )}
+
+
+        {mode === 'check' && (
+
+          <div>
+
+            <label>Exam Category</label><br />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            >
+              <option value="CPL">CPL</option>
+              <option value="Type Rated">Type Rated</option>
+            </select>
+
+            <br /><br />
+
+            <label>Roll Number</label><br />
+            <input
+              type="text"
+              value={roll}
+              onChange={(e) => setRoll(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            />
+
+            <br /><br />
+
+            <button
+              onClick={handleCheckRank}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: '#4da6ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px'
+              }}
+            >
+              {loading ? 'Checking...' : 'Check Rank'}
+            </button>
+
+          </div>
+
+        )}
+
+
+        {rank && (
+
+          <div style={{
+            marginTop: '30px',
+            padding: '20px',
+            background: '#ecfdf5',
+            border: '1px solid #bbf7d0',
+            borderRadius: '10px',
+            textAlign: 'center'
           }}>
 
-            <thead>
-              <tr>
-                <th style={{ borderBottom: '1px solid #ccc', padding: '5px' }}>Rank</th>
-                <th style={{ borderBottom: '1px solid #ccc', padding: '5px' }}>Result Time</th>
-              </tr>
-            </thead>
+            <h2>Your Estimated Rank</h2>
 
-            <tbody>
+            <h1 style={{ fontSize: '40px' }}>
+              #{rank}
+            </h1>
 
-              {leaderboard.map((c, idx) => {
+            {percentile !== null &&
+              <p>Percentile: {percentile}%</p>
+            }
 
-                const isUser = c.roll_number === roll
+            <p>Total submissions: {totalSubmissions}</p>
 
-                return (
+          </div>
 
-                  <tr key={idx} style={{ backgroundColor: isUser ? '#d1e7dd' : 'transparent' }}>
+        )}
 
-                    <td style={{ borderBottom: '1px solid #eee', padding: '5px' }}>
-                      {idx + 1}
-                    </td>
 
-                    <td style={{ borderBottom: '1px solid #eee', padding: '5px' }}>
-                      {c.result_time}
-                    </td>
+        {leaderboard.length > 0 && (
 
-                  </tr>
+          <div style={{ marginTop: '40px' }}>
 
-                )
+            <h3>Top 10 Fastest Results</h3>
 
-              })}
-
-            </tbody>
-
-          </table>
-
-          {rank && rank > 10 && (
-
-            <p style={{
-              marginTop: '10px',
-              fontWeight: 'bold',
-              color: '#0f5132'
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse'
             }}>
-              Your Rank: {rank} (not in top 10)
-            </p>
 
-          )}
+              <thead>
+                <tr style={{ background: '#f1f5f9' }}>
+                  <th style={{ padding: '8px' }}>Rank</th>
+                  <th style={{ padding: '8px' }}>Result Time</th>
+                </tr>
+              </thead>
 
-        </div>
+              <tbody>
 
-      )}
+                {leaderboard.map((c, idx) => {
+
+                  const isUser = c.roll_number === roll
+
+                  return (
+
+                    <tr
+                      key={idx}
+                      style={{
+                        background: isUser ? '#d1fae5' : 'white'
+                      }}
+                    >
+
+                      <td style={{ padding: '8px' }}>
+                        {idx + 1}
+                      </td>
+
+                      <td style={{ padding: '8px' }}>
+                        {c.result_time}
+                      </td>
+
+                    </tr>
+
+                  )
+
+                })}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        )}
+
+      </div>
 
     </div>
+
   )
+
 }
