@@ -209,7 +209,11 @@ export default function Home() {
     setLoading(false)
   }
 
-  const renderLeaderboard = (data: Candidate[], title: string, refs: React.MutableRefObject<(HTMLTableRowElement | null)[]>) => (
+  const renderLeaderboard = (
+    data: Candidate[],
+    title: string,
+    refs: React.MutableRefObject<(HTMLTableRowElement | null)[]>
+  ) => (
     <div style={{ marginTop: '40px', maxHeight: '300px', overflowY: 'auto' }}>
       <h3>{title}</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -225,7 +229,7 @@ export default function Home() {
             return (
               <tr
                 key={idx}
-                ref={(el) => (refs.current[idx] = el)}
+                ref={(el) => { refs.current[idx] = el }} // <-- fixed TypeScript error
                 style={{
                   background: isUser ? '#ffeaa7' : 'white',
                   fontWeight: isUser ? 'bold' : 'normal'
@@ -260,22 +264,26 @@ export default function Home() {
 
         {mode === 'submit' && (
           <form onSubmit={handleSubmit}>
-            <label>Exam Category</label><br />
+            <label>Exam Category</label>
+            <br />
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '8px' }}>
               <option value="CPL">CPL</option>
               <option value="Type Rated">Type Rated</option>
             </select>
             <br /><br />
 
-            <label>Email</label><br />
+            <label>Email</label>
+            <br />
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '8px' }} />
             <br /><br />
 
-            <label>Roll Number</label><br />
+            <label>Roll Number</label>
+            <br />
             <input type="number" inputMode="numeric" placeholder="Enter numeric roll number" value={roll} onChange={(e) => setRoll(e.target.value)} style={{ width: '100%', padding: '8px' }} />
             <br /><br />
 
-            <label>Result Time</label><br />
+            <label>Result Time</label>
+            <br />
             <input type="datetime-local" required value={time} onChange={(e) => setTime(e.target.value)} min="2026-03-12T22:00" max="2026-03-13T22:00" style={{ width: '100%', padding: '8px' }} />
             <br /><br />
 
@@ -287,14 +295,16 @@ export default function Home() {
 
         {mode === 'check' && (
           <div>
-            <label>Exam Category</label><br />
+            <label>Exam Category</label>
+            <br />
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '8px' }}>
               <option value="CPL">CPL</option>
               <option value="Type Rated">Type Rated</option>
             </select>
             <br /><br />
 
-            <label>Roll Number</label><br />
+            <label>Roll Number</label>
+            <br />
             <input type="number" inputMode="numeric" placeholder="Enter numeric roll number" value={roll} onChange={(e) => setRoll(e.target.value)} style={{ width: '100%', padding: '8px' }} />
             <br /><br />
 
