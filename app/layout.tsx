@@ -1,5 +1,6 @@
 // app/layout.tsx
 import React from 'react'
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata = {
   title: 'Indigo JFO Rank Estimator',
