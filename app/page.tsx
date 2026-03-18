@@ -2,31 +2,26 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import Link from 'next/link'
+import NavBar from '../components/NavBar'
 
 export default function Home() {
   const [mode, setMode] = useState<'submit' | 'check' | 'update'>('submit')
-
   const [email, setEmail] = useState('')
   const [roll, setRoll] = useState('')
   const [category, setCategory] = useState<'CPL' | 'Type Rated'>('CPL')
   const [time, setTime] = useState('')
-
   const [adaptReceived, setAdaptReceived] = useState<'yes' | 'no' | ''>('')
   const [adaptDate, setAdaptDate] = useState('')
-
   const [rank, setRank] = useState<number | null>(null)
   const [updateId, setUpdateId] = useState<number | null>(null)
-
   const [totalCPL, setTotalCPL] = useState(0)
   const [totalTR, setTotalTR] = useState(0)
-
   const [leaderboardCPL, setLeaderboardCPL] = useState<any[]>([])
   const [leaderboardTR, setLeaderboardTR] = useState<any[]>([])
-
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
-  // ------------------------- Helpers -------------------------
   const resetForm = () => {
     setEmail('')
     setRoll('')
@@ -37,7 +32,6 @@ export default function Home() {
     setRank(null)
   }
 
-  // ------------------------- Stats -------------------------
   const fetchStats = async () => {
     const { count: cpl } = await supabase
       .from('candidates')
@@ -53,7 +47,6 @@ export default function Home() {
     setTotalTR(tr ?? 0)
   }
 
-  // ------------------------- Leaderboards -------------------------
   const fetchLeaderboards = async () => {
     const { data: cpl } = await supabase
       .from('candidates')
@@ -73,7 +66,6 @@ export default function Home() {
     setLeaderboardTR(tr || [])
   }
 
-  // ------------------------- Rank -------------------------
   const calculateRank = async (userTime: string, cat: 'CPL' | 'Type Rated') => {
     const { count } = await supabase
       .from('candidates')
@@ -84,15 +76,10 @@ export default function Home() {
     setRank((count ?? 0) + 1)
   }
 
-  // ------------------------- Submit -------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('')
-
-    if (!email || !roll || !time || !adaptReceived) {
-      return setMessage('⚠️ Please fill all required fields')
-    }
-
+    if (!email || !roll || !time || !adaptReceived) return setMessage('⚠️ Please fill all required fields')
     setLoading(true)
 
     const { data: existing } = await supabase
@@ -122,18 +109,14 @@ export default function Home() {
     await calculateRank(time, category)
     await fetchStats()
     await fetchLeaderboards()
-
     setMessage('✅ Submitted successfully')
     setLoading(false)
   }
 
-  // ------------------------- Check -------------------------
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('')
-
     if (!roll && !email) return setMessage('⚠️ Enter Email or Roll')
-
     setLoading(true)
 
     const { data } = await supabase
@@ -150,22 +133,16 @@ export default function Home() {
     }
 
     const user = data[0]
-
     setAdaptReceived(user.adapt_received ? 'yes' : 'no')
     setAdaptDate(user.adapt_date || '')
-
     await calculateRank(user.result_time, user.exam_category)
-
     setMessage('✅ Record found')
     setLoading(false)
   }
 
-  // ------------------------- Update Fetch -------------------------
   const handleFetchForUpdate = async () => {
     setMessage('')
-
     if (!roll) return setMessage('⚠️ Enter Roll Number')
-
     setLoading(true)
 
     const { data } = await supabase
@@ -182,24 +159,19 @@ export default function Home() {
     }
 
     const user = data[0]
-
     setUpdateId(user.id)
     setEmail(user.email || '')
     setTime(user.result_time || '')
     setAdaptReceived(user.adapt_received ? 'yes' : 'no')
     setAdaptDate(user.adapt_date || '')
-
     setMessage('✅ Data loaded. You can edit now.')
     setLoading(false)
   }
 
-  // ------------------------- Update -------------------------
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('')
-
     if (!updateId) return setMessage('⚠️ Fetch record first')
-
     setLoading(true)
 
     await supabase
@@ -217,7 +189,6 @@ export default function Home() {
     await calculateRank(time, category)
     await fetchStats()
     await fetchLeaderboards()
-
     setMessage('✅ Updated successfully')
     setLoading(false)
   }
@@ -228,90 +199,115 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="max-w-3xl mx-auto p-6 font-sans">
-      <h1 className="text-2xl font-bold text-center mb-6">Indigo JFO Merit Rank</h1>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-indigo-100 font-sans">
+      {/* Top navigation bar */}
+      <NavBar />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-blue-100 p-4 rounded">CPL: {totalCPL}</div>
-        <div className="bg-green-100 p-4 rounded">Type Rated: {totalTR}</div>
-      </div>
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <h1 className="text-4xl font-bold text-indigo-900 text-center mb-10 tracking-tight">
+          Indigo JFO Merit Rank
+        </h1>
 
-      {/* Mode */}
-      <div className="flex gap-3 mb-6">
-        {['submit','check','update'].map((m:any)=> (
-          <button
-            key={m}
-            onClick={() => { setMode(m); resetForm() }}
-            className={`px-4 py-2 rounded ${mode===m ? 'bg-black text-white':'bg-gray-200'}`}
-          >
-            {m.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
-      {/* Message */}
-      {message && <div className="mb-4 text-sm">{message}</div>}
-
-      {/* Form */}
-      <form onSubmit={mode === 'submit' ? handleSubmit : mode === 'check' ? handleCheck : handleUpdate} className="space-y-4">
-        <select value={category} onChange={(e) => setCategory(e.target.value as any)} className="w-full p-2 border rounded">
-          <option value="CPL">CPL</option>
-          <option value="Type Rated">Type Rated</option>
-        </select>
-
-        <input className="w-full p-2 border rounded" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="w-full p-2 border rounded" placeholder="Roll Number" value={roll} onChange={(e) => setRoll(e.target.value)} />
-
-        {mode !== 'check' && (
-          <input type="datetime-local" className="w-full p-2 border rounded" value={time} onChange={(e) => setTime(e.target.value)} />
-        )}
-
-        {(mode === 'submit' || updateId) && (
-          <>
-            <select className="w-full p-2 border rounded" value={adaptReceived} onChange={(e) => setAdaptReceived(e.target.value as any)}>
-              <option value="">ADAPT?</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-
-            {adaptReceived === 'yes' && (
-              <input type="date" className="w-full p-2 border rounded" value={adaptDate} onChange={(e) => setAdaptDate(e.target.value)} />
-            )}
-          </>
-        )}
-
-        {mode === 'update' && !updateId && (
-          <button type="button" onClick={handleFetchForUpdate} className="w-full bg-yellow-400 p-2 rounded">
-            Fetch My Data
-          </button>
-        )}
-
-        {(mode !== 'update' || updateId) && (
-          <button type="submit" disabled={loading} className="w-full bg-black text-white p-2 rounded">
-            {loading ? 'Processing...' : mode === 'submit' ? 'Submit' : mode === 'check' ? 'Check Rank' : 'Update'}
-          </button>
-        )}
-      </form>
-
-      {/* Rank */}
-      {rank && (
-        <div className="mt-6 p-4 bg-green-100 rounded text-center">
-          Your Rank: <span className="font-bold">{rank}</span>
+        {/* Stats */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-indigo-200/80 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:scale-105 transition-transform">
+            <p className="text-indigo-900 font-semibold text-lg">CPL Candidates</p>
+            <p className="text-3xl font-bold mt-2">{totalCPL}</p>
+          </div>
+          <div className="bg-indigo-200/80 backdrop-blur-md p-6 rounded-2xl shadow-lg hover:scale-105 transition-transform">
+            <p className="text-indigo-900 font-semibold text-lg">Type Rated Candidates</p>
+            <p className="text-3xl font-bold mt-2">{totalTR}</p>
+          </div>
         </div>
-      )}
 
-      {/* Leaderboards */}
-      <div className="mt-8">
-        <h3 className="font-semibold mb-2">CPL Top 10</h3>
-        {leaderboardCPL.map((c, i) => (
-          <div key={i}>{i + 1}. {c.result_time}</div>
-        ))}
+        {/* Link to ADAPT Practice */}
+        <div className="text-center mb-8">
+          <Link
+            href="/adapt-practice"
+            className="inline-block px-8 py-4 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-semibold text-lg shadow-lg hover:scale-105 transition-transform"
+          >
+            Go to ADAPT Practice
+          </Link>
+        </div>
 
-        <h3 className="font-semibold mt-6 mb-2">Type Rated Top 10</h3>
-        {leaderboardTR.map((c, i) => (
-          <div key={i}>{i + 1}. {c.result_time}</div>
-        ))}
+        {/* Mode buttons */}
+        <div className="flex gap-4 justify-center mb-6">
+          {['submit', 'check', 'update'].map((m: any) => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); resetForm() }}
+              className={`px-6 py-3 rounded-full font-medium text-white transition-colors duration-200 ${
+                mode === m ? 'bg-indigo-700 shadow-lg' : 'bg-indigo-400 hover:bg-indigo-600'
+              }`}
+            >
+              {m.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Message */}
+        {message && <div className="mb-4 text-center text-indigo-800">{message}</div>}
+
+        {/* Form */}
+        <form onSubmit={mode === 'submit' ? handleSubmit : mode === 'check' ? handleCheck : handleUpdate} className="space-y-4 max-w-xl mx-auto">
+          <select value={category} onChange={(e) => setCategory(e.target.value as any)} className="w-full p-3 border border-indigo-300 rounded-lg">
+            <option value="CPL">CPL</option>
+            <option value="Type Rated">Type Rated</option>
+          </select>
+
+          <input className="w-full p-3 border border-indigo-300 rounded-lg" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="w-full p-3 border border-indigo-300 rounded-lg" placeholder="Roll Number" value={roll} onChange={(e) => setRoll(e.target.value)} />
+
+          {mode !== 'check' && (
+            <input type="datetime-local" className="w-full p-3 border border-indigo-300 rounded-lg" value={time} onChange={(e) => setTime(e.target.value)} />
+          )}
+
+          {(mode === 'submit' || updateId) && (
+            <>
+              <select className="w-full p-3 border border-indigo-300 rounded-lg" value={adaptReceived} onChange={(e) => setAdaptReceived(e.target.value as any)}>
+                <option value="">ADAPT?</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              {adaptReceived === 'yes' && (
+                <input type="date" className="w-full p-3 border border-indigo-300 rounded-lg" value={adaptDate} onChange={(e) => setAdaptDate(e.target.value)} />
+              )}
+            </>
+          )}
+
+          {mode === 'update' && !updateId && (
+            <button type="button" onClick={handleFetchForUpdate} className="w-full p-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 font-medium transition-colors">
+              Fetch My Data
+            </button>
+          )}
+
+          {(mode !== 'update' || updateId) && (
+            <button type="submit" disabled={loading} className="w-full p-3 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-semibold transition-colors">
+              {loading ? 'Processing...' : mode === 'submit' ? 'Submit' : mode === 'check' ? 'Check Rank' : 'Update'}
+            </button>
+          )}
+        </form>
+
+        {/* Rank display */}
+        {rank && (
+          <div className="mt-8 p-4 bg-indigo-100 rounded-xl shadow text-center text-indigo-900 font-bold text-xl">
+            Your Rank: {rank}
+          </div>
+        )}
+
+        {/* Leaderboards */}
+        <div className="mt-10 max-w-xl mx-auto space-y-3">
+          <h3 className="text-indigo-900 font-semibold text-lg">CPL Top 10</h3>
+          {leaderboardCPL.map((c, i) => (
+            <div key={i} className="p-3 bg-indigo-50 rounded-xl shadow hover:shadow-lg transition-shadow">{i + 1}. {c.result_time}</div>
+          ))}
+
+          <h3 className="text-indigo-900 font-semibold text-lg mt-6">Type Rated Top 10</h3>
+          {leaderboardTR.map((c, i) => (
+            <div key={i} className="p-3 bg-indigo-50 rounded-xl shadow hover:shadow-lg transition-shadow">{i + 1}. {c.result_time}</div>
+          ))}
+        </div>
       </div>
     </div>
   )
