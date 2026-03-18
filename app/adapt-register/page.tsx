@@ -39,8 +39,9 @@ export default function RegisterPage() {
           <p className="mt-2 font-bold">Total: ₹35,000</p>
         </section>
 
-         <div className="text-center mt-8">
-          <RegisterButton />
+         <div className="text-center mt-6">
+    {/* Place the button here */}
+    <RegisterButton href="https://wa.me/919082100685" />
           <p className="text-sm text-indigo-700 mt-2">
             Due to special hardware and sensitivity differences, we recommend joining the 5-day workshop
             to prepare for the actual ADAPT test.

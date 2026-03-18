@@ -1,12 +1,16 @@
 'use client'
 
-export default function RegisterButton() {
+type RegisterButtonProps = {
+  href?: string
+}
+
+export default function RegisterButton({ href }: RegisterButtonProps) {
   return (
     <a
-      href="https://wa.me/919082100685?text=Hi!%20I%20want%20to%20register%20for%20the%20Indigo%20ADAPT%20Test%20and%205-day%20workshop."
+      href={href || '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-block px-5 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200"
+      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-block"
     >
       Register Now
     </a>
