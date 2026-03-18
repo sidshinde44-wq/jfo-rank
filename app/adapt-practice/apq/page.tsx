@@ -2,7 +2,6 @@
 
 import NavBar from '../../../components/NavBar'
 import RegisterButton from '../../../components/RegisterButton'
-
 import { useState } from 'react'
 
 type ForcedChoice = { question: string; optionA: string; optionB: string }
@@ -10,12 +9,12 @@ type LikertChoice = { question: string }
 type BehavioralChoice = { question: string; options: string[] }
 
 export default function APQPractice() {
-  // Sample Questions (you can expand)
+  // Sample Questions (expand as needed)
   const forcedChoices: ForcedChoice[] = [
     { question: 'Choose the statement more like you:', optionA: 'I enjoy working alone', optionB: 'I prefer working in a team' },
     { question: 'Choose the statement more like you:', optionA: 'I focus on the big picture', optionB: 'I focus on the fine details' },
     { question: 'Choose the statement more like you:', optionA: 'I am a quick decision-maker', optionB: 'I like to take my time to decide' },
-    // Add all 17 questions here
+    // ... add all 17 questions
   ]
 
   const likertChoices: LikertChoice[] = [
@@ -23,21 +22,21 @@ export default function APQPractice() {
     { question: 'I find it easy to stay focused on repetitive tasks.' },
     { question: 'I am rarely bothered by unexpected changes to my schedule.' },
     { question: 'I always double-check my work before submitting it.' },
-    // Add all 17 questions here
+    // ... add all 17 questions
   ]
 
   const behavioralChoices: BehavioralChoice[] = [
     { question: 'I prefer instructions to be:', options: ['Written in a manual', 'Delivered verbally', 'Pictorial/Diagram based', 'Demonstrated by someone'] },
     { question: 'When I am in a high-stress situation, I usually:', options: ['Slow down to ensure I do not make mistakes', 'Speed up to finish the task', 'Ask someone else to take over', 'Stop and re-evaluate the plan'] },
     { question: 'In a team project, my typical role is:', options: ['Creative idea generator', 'Scheduler', 'Technical worker', 'Conflict resolver'] },
-    // Add all behavioral questions here
+    // ... add all behavioral questions
   ]
 
-  // State to track answers (optional, could store in an array/object)
-  const [answers, setAnswers] = useState({})
+  // State to track answers (fix TypeScript)
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({})
 
   const handleAnswer = (q: string, val: string) => {
-    setAnswers({ ...answers, [q]: val })
+    setAnswers(prev => ({ ...prev, [q]: val }))
   }
 
   return (
@@ -57,17 +56,13 @@ export default function APQPractice() {
               <p className="text-indigo-800 mb-2">{q.question}</p>
               <div className="flex gap-4 flex-wrap">
                 <button
-                  className={`px-3 py-1 rounded border hover:bg-indigo-100 ${
-                    answers[q.question] === q.optionA ? 'bg-indigo-200' : ''
-                  }`}
+                  className={`px-3 py-1 rounded border hover:bg-indigo-100 ${answers[q.question] === q.optionA ? 'bg-indigo-200' : ''}`}
                   onClick={() => handleAnswer(q.question, q.optionA)}
                 >
                   {q.optionA}
                 </button>
                 <button
-                  className={`px-3 py-1 rounded border hover:bg-indigo-100 ${
-                    answers[q.question] === q.optionB ? 'bg-indigo-200' : ''
-                  }`}
+                  className={`px-3 py-1 rounded border hover:bg-indigo-100 ${answers[q.question] === q.optionB ? 'bg-indigo-200' : ''}`}
                   onClick={() => handleAnswer(q.question, q.optionB)}
                 >
                   {q.optionB}
@@ -87,9 +82,7 @@ export default function APQPractice() {
                 {['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree'].map((opt) => (
                   <button
                     key={opt}
-                    className={`px-3 py-1 rounded border hover:bg-indigo-100 ${
-                      answers[q.question] === opt ? 'bg-indigo-200' : ''
-                    }`}
+                    className={`px-3 py-1 rounded border hover:bg-indigo-100 ${answers[q.question] === opt ? 'bg-indigo-200' : ''}`}
                     onClick={() => handleAnswer(q.question, opt)}
                   >
                     {opt}
@@ -110,9 +103,7 @@ export default function APQPractice() {
                 {q.options.map((opt) => (
                   <button
                     key={opt}
-                    className={`px-3 py-1 rounded border hover:bg-indigo-100 ${
-                      answers[q.question] === opt ? 'bg-indigo-200' : ''
-                    }`}
+                    className={`px-3 py-1 rounded border hover:bg-indigo-100 ${answers[q.question] === opt ? 'bg-indigo-200' : ''}`}
                     onClick={() => handleAnswer(q.question, opt)}
                   >
                     {opt}
@@ -123,20 +114,20 @@ export default function APQPractice() {
           ))}
         </section>
 
-        {/* Bottom Note */}
+        {/* Bottom Note + Register */}
         <section className="mb-10 bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-400">
-          <p className="text-yellow-900 font-semibold">
+          <p className="text-yellow-900 font-semibold text-center">
             Register for actual Indigo ADAPT test set, WhatsApp/Call <span className="font-mono">+91 90821 00685</span>.<br />
             Registration fees: ₹15,000 Limited Slots Available, 5-day workshop fees: ₹20,000.<br />
             Includes actual Indigo ADAPT paper discussion, tips, tricks, exam simulation & questions. Total: ₹35,000.
           </p>
-	 <div className="text-center mt-8">
-          <RegisterButton />
-          <p className="text-sm text-indigo-700 mt-2">
-            Due to special hardware and sensitivity differences, we recommend joining the 5-day workshop
-            to prepare for the actual ADAPT test.
-          </p>
-        </div>
+          <div className="text-center mt-6">
+            <RegisterButton href="https://wa.me/919082100685" /> {/* <-- WhatsApp redirect */}
+            <p className="text-sm text-indigo-700 mt-2">
+              Due to special hardware and sensitivity differences, we recommend joining the 5-day workshop
+              to prepare for the actual ADAPT test.
+            </p>
+          </div>
         </section>
       </main>
     </div>
