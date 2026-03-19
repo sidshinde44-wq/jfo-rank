@@ -21,7 +21,9 @@ export default function Home() {
   const [leaderboardTR, setLeaderboardTR] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-
+  const [batch, setBatch] = useState<number | null>(null)
+  const [percentile, setPercentile] = useState<number | null>(null)
+  
   const resetForm = () => {
     setEmail('')
     setRoll('')
@@ -30,6 +32,8 @@ export default function Home() {
     setAdaptDate('')
     setUpdateId(null)
     setRank(null)
+    setBatch(null)
+    setPercentile(null)
   }
 
   const fetchStats = async () => {
@@ -66,14 +70,25 @@ export default function Home() {
     setLeaderboardTR(tr || [])
   }
 
-  const calculateRank = async (userTime: string, cat: 'CPL' | 'Type Rated') => {
-    const { count } = await supabase
+    const calculateStats = async (userTime: string, cat: 'CPL' | 'Type Rated') => {
+    const { count: better } = await supabase
       .from('candidates')
       .select('*', { count: 'exact', head: true })
       .eq('exam_category', cat)
       .lt('result_time', userTime)
 
-    setRank((count ?? 0) + 1)
+    const { count: total } = await supabase
+      .from('candidates')
+      .select('*', { count: 'exact', head: true })
+      .eq('exam_category', cat)
+
+    const r = (better ?? 0) + 1
+    const b = Math.ceil(r / 50)
+    const p = total ? ((total - r) / total) * 100 : 0
+
+    setRank(r)
+    setBatch(b)
+    setPercentile(parseFloat(p.toFixed(1)))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,7 +121,7 @@ export default function Home() {
       },
     ])
 
-    await calculateRank(time, category)
+    await calculateStats(time, category)
     await fetchStats()
     await fetchLeaderboards()
     setMessage('✅ Submitted successfully')
@@ -135,7 +150,7 @@ export default function Home() {
     const user = data[0]
     setAdaptReceived(user.adapt_received ? 'yes' : 'no')
     setAdaptDate(user.adapt_date || '')
-    await calculateRank(user.result_time, user.exam_category)
+    await calculateStats(user.result_time, user.exam_category)
     setMessage('✅ Record found')
     setLoading(false)
   }
@@ -186,7 +201,7 @@ export default function Home() {
       })
       .eq('id', updateId)
 
-    await calculateRank(time, category)
+    await calculateStats(time, category)
     await fetchStats()
     await fetchLeaderboards()
     setMessage('✅ Updated successfully')
@@ -290,11 +305,31 @@ export default function Home() {
         </form>
 
         {/* Rank display */}
-        {rank && (
-          <div className="mt-8 p-4 bg-indigo-100 rounded-xl shadow text-center text-indigo-900 font-bold text-xl">
-            Your Rank: {rank}
-          </div>
-        )}
+        {rank && batch && percentile !== null && (
+	  <div className="mt-8 p-5 bg-indigo-100 rounded-xl shadow text-center text-indigo-900 space-y-2">
+
+ 	   <div className="text-xl font-bold">
+  	    Your Rank: {rank}
+  	  </div>
+
+  	  <div>
+  	    Batch: <b>{batch}</b> ({(batch - 1) * 50 + 1}–{batch * 50})
+  	  </div>
+
+	    <div>
+ 	     Percentile Score: <b>{percentile}%</b>
+  	  </div>
+
+	    <div className="mt-3 text-yellow-700 font-medium">
+	      ADAPT calls have not started yet
+	    </div>
+
+ 	   <div className="text-sm text-gray-600">
+ 	     Earlier batches are typically called first once ADAPT begins.
+ 	   </div>
+
+	  </div>
+  )}
 
         {/* Leaderboards */}
         <div className="mt-10 max-w-xl mx-auto space-y-3">
