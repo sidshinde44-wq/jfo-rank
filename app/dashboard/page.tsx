@@ -28,6 +28,21 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  const addApplication = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+  await supabase.from('applications').insert([
+    {
+      user_id: user?.id,
+      airline: 'IndiGo',
+      category: 'Cadet',
+      stage: 'Written'
+    }
+  ])
+
+  getUserAndApps()
+}
+
   if (loading) return <p>Loading...</p>
 
   return (
