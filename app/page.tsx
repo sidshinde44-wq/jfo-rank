@@ -23,7 +23,8 @@ export default function Home() {
   const [message, setMessage] = useState('')
   const [batch, setBatch] = useState<number | null>(null)
   const [percentile, setPercentile] = useState<number | null>(null)
-  
+
+
   const resetForm = () => {
     setEmail('')
     setRoll('')
@@ -41,6 +42,12 @@ export default function Home() {
       .from('candidates')
       .select('*', { count: 'exact', head: true })
       .eq('exam_category', 'CPL')
+
+	const handleLogin = async () => {
+      await supabase.auth.signInWithOAuth({
+       provider: 'google'
+  })
+}
 
     const { count: tr } = await supabase
       .from('candidates')
