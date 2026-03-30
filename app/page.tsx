@@ -5,6 +5,10 @@ import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import NavBar from '../components/NavBar'
 
+// app/page.tsx
+export default function Home() {
+  return <div>NEW HOMEPAGE</div>
+}
 export default function Home() {
   const [mode, setMode] = useState<'submit' | 'check' | 'update'>('submit')
   const [email, setEmail] = useState('')
