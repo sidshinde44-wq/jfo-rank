@@ -58,6 +58,9 @@ export default function Dashboard() {
           <p><b>Stage:</b> {app.stage}</p>
         </div>
       ))}
+      <button onClick={addApplication}>
+        Add Application
+      </button>
     </div>
   )
 }
